@@ -122,14 +122,7 @@
         </div>
 
         <div class="flex items-center gap-x-2">
-          <v-text-field
-            v-model.number="batteryThresholds.high"
-            label="High voltage (V)"
-            type="number"
-            density="compact"
-            variant="outlined"
-            hide-details
-          />
+          <div class="flex-1 text-sm">High battery</div>
           <input
             v-model="miniWidget.options.voltageToColorScheme.high"
             type="color"
@@ -141,7 +134,7 @@
         <div class="flex items-center gap-x-2">
           <v-text-field
             v-model.number="batteryThresholds.medium"
-            label="Medium voltage (V)"
+            label="Medium threshold (V)"
             type="number"
             density="compact"
             variant="outlined"
@@ -158,7 +151,7 @@
         <div class="flex items-center gap-x-2">
           <v-text-field
             v-model.number="batteryThresholds.low"
-            label="Low voltage (V)"
+            label="Low threshold (V)"
             type="number"
             density="compact"
             variant="outlined"
@@ -175,7 +168,7 @@
         <div class="flex items-center gap-x-2">
           <v-text-field
             v-model.number="batteryThresholds.critical"
-            label="Critical voltage (V)"
+            label="Critical threshold (V)"
             type="number"
             density="compact"
             variant="outlined"
@@ -256,13 +249,12 @@ const currentBatteryLevel = computed<BatteryLevel>(() => {
 
   if (voltage == null) return 'unknown'
 
-  const { critical, low, medium, high } = batteryThresholds.value
+  const { critical, low, medium } = batteryThresholds.value
 
-  if (voltage >= high) return 'high'
-  if (voltage >= medium) return 'medium'
-  if (voltage >= low) return 'low'
-  if (voltage >= critical) return 'critical'
-  if (voltage < critical) return 'critical'
+  if (voltage <= critical) return 'critical'
+  if (voltage <= low) return 'low'
+  if (voltage <= medium) return 'medium'
+  if (voltage > medium) return 'high'
   return 'unknown'
 })
 
