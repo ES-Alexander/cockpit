@@ -22,12 +22,12 @@ export let mavlinkCameraZoomActionId: string | undefined = undefined
 export let mavlinkCameraFocusActionId: string | undefined = undefined
 
 const joystickAxisConfig = [
-  { key: 'axis_x' },
-  { key: 'axis_y' },
-  { key: 'axis_z' },
-  { key: 'axis_r' },
-  { key: 'axis_s' },
-  { key: 'axis_t' },
+  { key: 'axis_x', reverseVehicleTypes: ['copter', 'sub'] },
+  { key: 'axis_y', reverseVehicleTypes: ['copter', 'sub'] },
+  { key: 'axis_z', reverseVehicleTypes: ['rover'] },
+  { key: 'axis_r', reverseVehicleTypes: [] as string[] },
+  { key: 'axis_s', reverseVehicleTypes: ['sub'] },
+  { key: 'axis_t', reverseVehicleTypes: ['sub'] },
 ] as const
 
 const axisInputId = (key: string): string => `joystick/inputs/${key.replace('_', '-')}`
@@ -36,6 +36,22 @@ const axisName = (key: string): string =>
     .split('_')
     .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
     .join(' ')
+
+/**
+ * Generates a JavaScript expression that evaluates to -1 when the vehicle type matches
+ * one of the given types and reverse is active, or 1 otherwise
+ * @param {string[]} vehicleTypes - Vehicle types that should trigger reversal
+ * @returns {string} A data-lake expression string
+ */
+const getReverseExpression = (vehicleTypes: readonly string[]): string => {
+  if (vehicleTypes.length === 0) return '1'
+  if (vehicleTypes.length === 1) {
+    return `('{{cockpit/vehicle/type}}' === '${vehicleTypes[0]}' && {{joystick/inputs/reverse}}) ? -1 : 1`
+  }
+  return `([${vehicleTypes
+    .map((t) => `'${t}'`)
+    .join(', ')}].includes('{{cockpit/vehicle/type}}') && {{joystick/inputs/reverse}}) ? -1 : 1`
+}
 
 /**
  * Pre-built data lake variable actions for joystick axis inputs, used in joystick profile mappings
@@ -172,22 +188,38 @@ export const setupJoystickAxesResources = (): void => {
     const id = axisInputId(axis.key)
     const name = axisName(axis.key)
     const outputId = id.replace('/inputs/', '/outputs/')
+    const reverseId = `${outputId}-reverse`
 
     createDataLakeVariable({ id, name, ...commonVariableConfig }, 0)
 
     try {
-      const existing = getAllTransformingFunctions().find((f) => f.id === outputId)
-      if (!existing) {
+      const existingReverse = getAllTransformingFunctions().find((f) => f.id === reverseId)
+      if (!existingReverse) {
+        createTransformingFunction(
+          reverseId,
+          `${name} Reverse`,
+          'number',
+          getReverseExpression(axis.reverseVehicleTypes),
+          `Reverse multiplier for ${name} based on vehicle type and reverse toggle.`
+        )
+      }
+    } catch (error) {
+      console.error(`Error creating reverse transforming function for ${name}:`, error)
+    }
+
+    try {
+      const existingOutput = getAllTransformingFunctions().find((f) => f.id === outputId)
+      if (!existingOutput) {
         createTransformingFunction(
           outputId,
           `${name} Output`,
           'number',
-          `{{${id}}}`,
+          `{{${reverseId}}} * {{${id}}}`,
           `Output value for MANUAL_CONTROL ${name}.`
         )
       }
     } catch (error) {
-      console.error(`Error creating transforming function for ${name}:`, error)
+      console.error(`Error creating output transforming function for ${name}:`, error)
     }
   }
 }
@@ -219,6 +251,6 @@ export const setupReverseResources = (): void => {
 
 export const setupPredefinedLakeAndActionResources = (): void => {
   setupMavlinkCameraResources()
-  setupJoystickAxesResources()
   setupReverseResources()
+  setupJoystickAxesResources()
 }
