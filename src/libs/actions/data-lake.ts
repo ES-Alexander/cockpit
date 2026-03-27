@@ -35,7 +35,7 @@ const loadPersistentVariables = (): void => {
   if (savedValues && typeof savedValues === 'object') {
     Object.entries(savedValues).forEach(([id, value]) => {
       // Only load values for variables that exist and have persistValue set to true
-      if (dataLakeVariableInfo[id] && dataLakeVariableInfo[id].persistValue) {
+      if (dataLakeVariableInfo[id] && dataLakeVariableInfo[id]?.persistValue) {
         dataLakeVariableData[id] = value as string | number | boolean | undefined
       }
     })
@@ -44,7 +44,7 @@ const loadPersistentVariables = (): void => {
 
 // Save persistent variables to localStorage
 const savePersistentVariables = (): void => {
-  const persistentVariables = Object.values(dataLakeVariableInfo).filter((variable) => variable.persistent)
+  const persistentVariables = Object.values(dataLakeVariableInfo).filter((variable) => variable?.persistent)
 
   settingsManager.setKeyValue(persistentVariablesKey, JSON.stringify(persistentVariables))
 }
@@ -54,7 +54,7 @@ const savePersistentValues = (): void => {
   const persistentValuesObj: Record<string, string | number | boolean> = {}
 
   Object.entries(dataLakeVariableInfo)
-    .filter(([, variable]) => variable.persistValue)
+    .filter(([, variable]) => variable?.persistValue)
     .forEach(([id]) => {
       if (dataLakeVariableData[id] !== undefined) {
         persistentValuesObj[id] = dataLakeVariableData[id] as string | number | boolean
@@ -102,11 +102,11 @@ export const updateDataLakeVariableInfo = (variable: DataLakeVariable): void => 
 
   dataLakeVariableInfo[variable.id] = variable
 
-  if (variable.persistent) {
+  if (variable?.persistent) {
     savePersistentVariables()
   }
 
-  if (variable.persistValue) {
+  if (variable?.persistValue) {
     savePersistentValues()
   }
 
@@ -145,12 +145,12 @@ export const deleteDataLakeVariable = (id: string): void => {
   delete dataLakeVariableTimestamps[id]
 
   // If variable was persistent, remove it from the storage
-  if (variable && variable.persistent) {
+  if (variable && variable?.persistent) {
     savePersistentVariables()
   }
 
   // If variable had persistValue, update the persisted values
-  if (variable && variable.persistValue) {
+  if (variable && variable?.persistValue) {
     savePersistentValues()
   }
 
